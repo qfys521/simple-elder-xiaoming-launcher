@@ -1,26 +1,30 @@
+package cn.qfys521;
+
+import cn.chuanwise.toolkit.preservable.loader.FileLoader;
+import cn.chuanwise.toolkit.serialize.json.JacksonSerializer;
 import cn.chuanwise.xiaoming.bot.XiaoMingBot;
 import cn.chuanwise.xiaoming.bot.XiaoMingBotImpl;
 import cn.chuanwise.xiaoming.launcher.XiaoMingLauncher;
-import cn.qfys521.config.PropertiesConfig;
-import config.BotAccountInfo;
+import cn.qfys521.config.BotAccountInfo;
+import java.io.File;
 import java.util.Objects;
 import java.util.Scanner;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import top.mrxiaom.overflow.BotBuilder;
 
 
-@Slf4j
 @Getter
 @Setter
 public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
-
-    XiaoMingBot xiaoMingBot;
-    PropertiesConfig<BotAccountInfo> config = new PropertiesConfig<>(new BotAccountInfo() , "bot-config.properties");
+    final static Logger log = LoggerFactory.getLogger("XiaoMingBot");
+    final FileLoader fileLoader = new FileLoader(new JacksonSerializer());
     final Scanner scanner = new Scanner(System.in);
-    BotAccountInfo botAccount = (BotAccountInfo) config.getT();
+    XiaoMingBot xiaoMingBot;
+    BotAccountInfo botAccount = fileLoader.loadOrSupply(BotAccountInfo.class, new File("bot-config.json"), BotAccountInfo::new);
+
     @Override
     public Logger getLogger() {
         return log;
@@ -30,32 +34,32 @@ public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
     public boolean launch() {
         try {
             return loadBotAccount();
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error(e.getMessage());
             return false;
         }
     }
 
-    private void onFirstInit(){
+    private void onFirstInit() {
         log.warn("这是你初次启动小明吗？小明找不到或无法读取配置文件，我们现在就开始配置吧！");
         log.info("首先呢，请输入Bot的管理员: ");
         var author = Long.parseLong(scanner.nextLine());
         botAccount.setAdminId(author);
         log.info("请输入你的登陆方式:\n");
         log.info("1,正向WebSocket 2,反向WebSocket");
-        int type = 0;
+        int type;
         do {
             final String inp = scanner.nextLine();
             if (inp.matches("\\d+")) {
                 type = Integer.parseInt(inp);
-                config.saveOrFail();
+                botAccount.saveOrFail();
                 break;
             } else {
                 log.error("请重新输入");
             }
         } while (true);
-        switch (type){
-            case 1 :{
+        switch (type) {
+            case 1: {
                 botAccount.setPositive(true);
                 log.info("token:");
                 botAccount.setToken(scanner.nextLine());
@@ -63,29 +67,32 @@ public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
                 botAccount.setPort(Integer.parseInt(scanner.nextLine()));
                 log.info("正向ws URL：");
                 botAccount.setAddr(scanner.nextLine());
-
-                config.saveOrFail();
+                botAccount.setType("Positive");
+                botAccount.saveOrFail();
                 break;
             }
-            case 2 :{
+            case 2: {
                 botAccount.setReversed(true);
                 log.info("token: ");
                 botAccount.setToken(scanner.nextLine());
                 log.info("反向ws PORT：");
                 botAccount.setPort(Integer.parseInt(scanner.nextLine()));
-                config.saveOrFail();
+                botAccount.setType("Reversed");
+                botAccount.saveOrFail();
                 break;
             }
-            default:{
+            default: {
                 throw new RuntimeException();
             }
         }
 
+        log.info("已应用配置。请重新启动机器人吧！");
 
     }
-    private boolean loadBotAccount(){
-        if (botAccount.isPositive()){
-            if (botAccount.getAdminId()==0 || Objects.isNull(botAccount.getAddr()) || botAccount.getPort()==0){
+
+    private boolean loadBotAccount() {
+        if (botAccount.isPositive() || botAccount.getType()=="Positive") {
+            if (botAccount.getAdminId() == 0 || Objects.isNull(botAccount.getAddr()) || botAccount.getPort() == 0 ) {
                 onFirstInit();
                 return false;
             }
@@ -98,8 +105,8 @@ public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
                 return false;
             }
             return true;
-        }else if (botAccount.isReversed()){
-            if (botAccount.getAdminId()==0 || Objects.isNull(botAccount.getToken()) || botAccount.getPort()==0){
+        } else if (botAccount.isReversed() || botAccount.getType()=="Reversed") {
+            if (botAccount.getAdminId() == 0 || Objects.isNull(botAccount.getToken()) || botAccount.getPort() == 0) {
                 onFirstInit();
                 return false;
             }
@@ -112,8 +119,7 @@ public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
                 return false;
             }
             return true;
-        }
-        else {
+        } else {
             onFirstInit();
             return false;
         }
@@ -123,7 +129,6 @@ public class SimpleXiaoMingBotLauncherImpl implements XiaoMingLauncher {
     public void stop() {
         xiaoMingBot.stop();
     }
-
 
 
 }
