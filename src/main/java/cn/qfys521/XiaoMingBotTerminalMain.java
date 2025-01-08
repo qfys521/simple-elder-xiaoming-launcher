@@ -8,18 +8,24 @@ import org.slf4j.LoggerFactory;
 @Getter
 @Setter
 public class XiaoMingBotTerminalMain {
-    final static Logger log = LoggerFactory.getLogger("XiaoMingBot");
+    private static final Logger log = LoggerFactory.getLogger("XiaoMingBot");
 
     public static void main(String[] args) {
-        final SimpleXiaoMingBotLauncherImpl xiaoMingBotLauncher = new SimpleXiaoMingBotLauncherImpl();
+        SimpleXiaoMingBotLauncherImpl xiaoMingBotLauncher = new SimpleXiaoMingBotLauncherImpl();
         if (xiaoMingBotLauncher.launch()) {
-            try {
-                xiaoMingBotLauncher.start();
-                xiaoMingBotLauncher.getXiaoMingBot().getAccountManager().createAccount(xiaoMingBotLauncher.getBotAccount().getAdminId()).setAdministrator(true);
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                System.exit(-1);
-            }
+            startBot(xiaoMingBotLauncher);
+        }
+    }
+
+    private static void startBot(SimpleXiaoMingBotLauncherImpl xiaoMingBotLauncher) {
+        try {
+            xiaoMingBotLauncher.start();
+            xiaoMingBotLauncher.getXiaoMingBot().getAccountManager()
+                    .createAccount(xiaoMingBotLauncher.getBotAccount().getAdminId())
+                    .setAdministrator(true);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            System.exit(-1);
         }
     }
 }
